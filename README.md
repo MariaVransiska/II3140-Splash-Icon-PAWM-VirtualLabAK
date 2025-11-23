@@ -2,7 +2,7 @@
 Tugas App Icon dan Splash Screen - II3140 Pengembangan Aplikasi Web dan Mobile
 
 # Anggota : 
-- 18223119 - Maria Vransiska Pingkhan \n
+- 18223119 - Maria Vransiska Pingkhan
 - 18223136 - Geraldo Linggom Samuel T
 
 # Deskripsi 
