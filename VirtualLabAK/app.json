@@ -4,18 +4,18 @@
     "slug": "VirtualLabAK",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon.png",
+    "icon": "./assets/images/Icon Salib Tunggal.png",
     "scheme": "virtuallabak",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/ios-light.png"
+      "icon": "./assets/images/Icon Final VirtualLabAK.png"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/adaptive-icon.png"
+        "foregroundImage": "./assets/images/Icon Salib Tunggal.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -30,12 +30,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon-light.png",
+          "image": "./assets/images/Icon Salib Tunggal.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "image": "./assets/images/splash-icon-dark.png",
+            "image": "./assets/images/Icon Salib Tunggal.png",
             "backgroundColor": "#000000"
           }
         }
