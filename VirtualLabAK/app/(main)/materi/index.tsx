@@ -22,37 +22,37 @@ const MATERI_LIST: MateriItem[] = [
     {
       id: "1",
       title: "Pertemuan 1 - Siapakah Kristus",
-      pdfUrl: "https://contoh.com/materi/01-Siapakah-Kristus.pdf",
+      pdfUrl: "https://drive.google.com/file/d/1-kqFdFIw4pjwuS2Pd_lBhgoHMxI1G7xI/view?usp=drive_link",
       videoUrl: "https://youtube.com/",
       image: require("@/assets/images/Gambar Materi.png"),
     },
     {
       id: "2",
       title: "Pertemuan 2 - Doktrin Keselamatan",
-      pdfUrl: "https://contoh.com/materi/02-Doktrin-Keselamatan.pdf",
+      pdfUrl: "https://drive.google.com/file/d/18H1JmTuIZvjDPr83MnEqSPAsMC3tYGkm/view?usp=drive_link",
       videoUrl: "https://youtube.com/",
-      image: require("@/assets/images/Gambar Materi.png"),
+      image: require("@/assets/images/materi keselamatan.jpeg"),
     },
     {
       id: "3",
       title: "Pertemuan 3 - Iman",
-      pdfUrl: "https://contoh.com/materi/03-Iman.pdf",
+      pdfUrl: "https://drive.google.com/file/d/1MluinntL2KLUaskmhPVrqrU1Q61v-pYp/view?usp=drive_link",
       videoUrl: "https://youtube.com/",
-      image: require("@/assets/images/Gambar Materi.png"),
+      image: require("@/assets/images/materi iman.jpeg"),
     },
     {
       id: "4",
       title: "Pertemuan 4 - Doktrin Tritunggal",
-      pdfUrl: "https://contoh.com/materi/04-Doktrin-Tritunggal.pdf",
+      pdfUrl: "https://drive.google.com/file/d/1fBdwuyrdsnzM2sMnTbgXh6QY0DCigzBB/view?usp=sharing",
       videoUrl: "https://youtube.com/",
-      image: require("@/assets/images/Gambar Materi.png"),
+      image: require("@/assets/images/materi tritunggal.jpg"),
     },
     {
       id: "5",
       title: "Pertemuan 5 - Kekudusan",
-      pdfUrl: "https://contoh.com/materi/05-Kekudusan.pdf",
+      pdfUrl: "https://drive.google.com/file/d/1OarjZLdSIf5Ra9S5trlEfSTtqVBlTNtG/view?usp=drive_link",
       videoUrl: "https://youtube.com/",
-      image: require("@/assets/images/Gambar Materi.png"),
+      image: require("@/assets/images/materi kekudusan.jpeg"),
     },
   ];
 
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   cardWrapper: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   cardHeader: {
     flexDirection: "row",

@@ -47,15 +47,13 @@ export default function MainTabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#008F83',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#0B8A8B',
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 72,
+    height: 90,
     paddingBottom: 10,
-    paddingTop: 6,
+    paddingTop: 13,
   },
 });

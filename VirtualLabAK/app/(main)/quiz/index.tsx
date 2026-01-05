@@ -41,37 +41,55 @@ export default function QuizListScreen() {
   
     return (
       <MainScreenLayout title="Quiz" showBack>
-        {/* ... */}
-        {QUIZZES.map((quiz) => {
-          const done = isDone(quiz.id);
-          return (
-            <Pressable
-              key={quiz.id}
-              onPress={() => goToQuiz(quiz)}
-              style={[
-                styles.card,
-                !quiz.opened && styles.cardLocked,
-              ]}
-            >
-              <Text
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          {QUIZZES.map((quiz) => {
+            const done = isDone(quiz.id);
+  
+            return (
+              <Pressable
+                key={quiz.id}
+                onPress={() => goToQuiz(quiz)}
                 style={[
-                  styles.status,
-                  quiz.opened
-                    ? done
-                      ? styles.statusOpen
-                      : styles.statusClosed
-                    : styles.statusClosed,
+                  styles.card,
+                  !quiz.opened && styles.cardLocked,
                 ]}
               >
-                {!quiz.opened
-                  ? "Belum dibuka"
-                  : done
-                  ? "Sudah dikerjakan"
-                  : "Sudah dibuka"}
-              </Text>
-            </Pressable>
-          );
-        })}
+                <View
+                  style={[
+                    styles.circle,
+                    quiz.opened ? styles.circleOpened : styles.circleLocked,
+                  ]}
+                >
+                  {done && <View style={styles.innerDot} />}
+                </View>
+  
+                <View style={styles.textCol}>
+                  <Text style={styles.title}>{quiz.title}</Text>
+                  <Text
+                    style={[
+                      styles.status,
+                      quiz.opened
+                        ? done
+                          ? styles.statusOpen
+                          : styles.statusClosed
+                        : styles.statusClosed,
+                    ]}
+                  >
+                    {!quiz.opened
+                      ? "Belum dibuka"
+                      : done
+                      ? "Sudah dikerjakan"
+                      : "Sudah dibuka"}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </MainScreenLayout>
     );
   }

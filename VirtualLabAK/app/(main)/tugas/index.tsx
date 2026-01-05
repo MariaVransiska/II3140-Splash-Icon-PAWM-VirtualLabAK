@@ -55,7 +55,7 @@ export default function TugasListScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
-        >
+          >
           {TASKS.map((task) => {
             const status = getStatus(task.id);
             return (
@@ -64,7 +64,15 @@ export default function TugasListScreen() {
                 style={styles.card}
                 onPress={() => openDetail(task)}
               >
-                {/* ...judul & deadline... */}
+                {/* kolom teks kiri: judul + deadline */}
+                <View style={styles.textCol}>
+                  <Text style={styles.title}>{task.title}</Text>
+                  <Text style={styles.deadline}>
+                    Deadline: {task.deadline}
+                  </Text>
+                </View>
+
+                {/* pill status kanan */}
                 <View
                   style={[
                     styles.statusPill,

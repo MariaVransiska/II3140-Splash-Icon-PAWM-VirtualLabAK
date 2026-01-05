@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -22,7 +23,8 @@ export default function LoginScreen() {
     router.push("/(auth)/register" as never);
   };
 
-  const onLogin = () => {
+  const onLogin = async () => {
+    await AsyncStorage.setItem("logged-in", "true");
     router.replace("/(main)/(tabs)/home");
   };
 
@@ -34,17 +36,21 @@ export default function LoginScreen() {
       end={{ x: 0.5, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.safe}
+        edges={["top", "left", "right", "bottom"]}
+      >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.container}>
+            {/* HEADER ATAS */}
             <View style={styles.headerTop}>
               <View style={styles.iconCircle}>
                 <Image
                   source={require("@/assets/images/Icon Final VirtualLabAK.png")}
-                  style={{ width: 70, height: 70}}
+                  style={{ width: 70, height: 70 }}
                   resizeMode="contain"
                 />
               </View>
@@ -93,7 +99,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* CARD BAWAH: footer text */}
+            {/* FOOTER */}
             <View style={styles.footerCard}>
               <Text style={styles.footerText}>
                 Virtual Lab Agama Kristen 2025

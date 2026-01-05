@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { saveObject } from "@/utils/storage";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -28,8 +29,17 @@ export default function RegisterScreen() {
     router.back();
   };
 
-  const onRegister = () => {
-    router.replace("/(auth)/login");
+  const onRegister = async () => {
+    const profile = {
+      nama,
+      nim,
+      kelas,
+      gender,
+    };
+  
+    await saveObject("profile", profile);
+  
+    router.replace("/(main)/(tabs)/home");
   };
 
   return (

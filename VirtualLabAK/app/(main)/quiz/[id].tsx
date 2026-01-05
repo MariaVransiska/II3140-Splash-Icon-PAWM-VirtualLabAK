@@ -34,6 +34,39 @@ const SAMPLE_QUESTIONS: Question[] = [
     ],
     correct: "C",
   },
+  {
+    id: 3,
+    text: "Istilah 'Kristus' (Christos) dalam Perjanjian Baru berarti ...",
+    options: [
+      "A. Yang Diurapi",
+      "B. Penyelamat dunia kerja",
+      "C. Guru yang bijak",
+      "D. Raja duniawi",
+    ],
+    correct: "A",
+  },
+  {
+    id: 4,
+    text: "Mengapa pengenalan pribadi akan Kristus penting bagi orang percaya?",
+    options: [
+      "A. Karena menentukan gaya berpakaian",
+      "B. Karena menentukan pemahaman keselamatan dan iman",
+      "C. Karena menentukan status sosial",
+      "D. Karena menentukan kewarganegaraan",
+    ],
+    correct: "B",
+  },
+  {
+    id: 5,
+    text: "Pernyataan mana yang paling tepat tentang Yesus menurut iman Kristen?",
+    options: [
+      "A. Hanya manusia sempurna yang dijadikan teladan",
+      "B. Allah yang menjadi manusia untuk menyelamatkan manusia",
+      "C. Malaikat tertinggi yang diutus ke dunia",
+      "D. Roh suci tanpa tubuh manusia",
+    ],
+    correct: "B",
+  },
 ];
 
 type QuizResult = {
@@ -52,7 +85,6 @@ export default function QuizDetailScreen() {
   );
   const [score, setScore] = useState<number | null>(null);
 
-  // load jawaban + skor lama kalau pernah dikerjakan
   useEffect(() => {
     loadObject<QuizResult>("quiz-result", {}).then((all) => {
       const prev = all[quizId];
@@ -68,7 +100,6 @@ export default function QuizDetailScreen() {
   };
 
   const onSubmit = async () => {
-    // validasi: semua soal harus terjawab
     const unanswered = SAMPLE_QUESTIONS.filter((q) => !answers[q.id]);
     if (unanswered.length > 0) {
       Alert.alert(
@@ -78,7 +109,6 @@ export default function QuizDetailScreen() {
       return;
     }
 
-    // hitung skor
     let correctCount = 0;
     SAMPLE_QUESTIONS.forEach((q) => {
       if (answers[q.id] === q.correct) correctCount += 1;
