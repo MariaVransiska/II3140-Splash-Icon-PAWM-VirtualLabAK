@@ -1,6 +1,6 @@
 /**
  * Quiz Service (Simplified)
- * Handles quiz score storage using quiz_scores JSONB column
+ * Handles quiz score storage using quiz_scores JSONB column (SEPARATE COLUMN)
  */
 
 import { supabase } from '../client';
@@ -25,7 +25,7 @@ export async function saveQuizScore(
   try {
     console.log('📊 Saving quiz score to database...');
     
-    // Get current scores
+    // Get current quiz_scores (SEPARATE COLUMN, not progress.quizScores)
     const { data: userData, error: fetchError } = await supabase
       .from('users')
       .select('quiz_scores')
@@ -75,7 +75,7 @@ export async function saveQuizScore(
       console.log('✅ First score for this quiz');
     }
 
-    // Update database
+    // Update quiz_scores column (SEPARATE COLUMN)
     const { error: updateError } = await supabase
       .from('users')
       .update({ quiz_scores: updatedScores })
@@ -113,6 +113,7 @@ export async function getQuizScores(
   try {
     console.log('📋 Loading quiz scores from database...');
     
+    // Get from quiz_scores column (SEPARATE COLUMN, not progress.quizScores)
     const { data, error } = await supabase
       .from('users')
       .select('quiz_scores')
@@ -128,11 +129,13 @@ export async function getQuizScores(
       };
     }
 
-    console.log('✅ Quiz scores loaded successfully');
+    const scores = (data.quiz_scores as QuizScore[]) || [];
+
+    console.log('✅ Quiz scores loaded successfully:', scores.length);
     return {
       success: true,
       message: 'Quiz scores loaded successfully',
-      scores: (data.quiz_scores as QuizScore[]) || [],
+      scores: scores,
     };
   } catch (error: any) {
     console.error('❌ Get quiz scores exception:', error);

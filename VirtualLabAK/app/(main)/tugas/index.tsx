@@ -41,9 +41,15 @@ export default function TugasListScreen() {
   const [statusMap, setStatusMap] = useState<TaskStatusMap>({});
   const [loading, setLoading] = useState(true);
 
+  // Load on mount
+  useEffect(() => {
+    loadAssignmentStatus();
+  }, []);
+
   // Reload data setiap kali screen difokuskan
   useFocusEffect(
     useCallback(() => {
+      console.log("🔄 Screen focused, reloading assignments...");
       loadAssignmentStatus();
     }, [])
   );
@@ -68,18 +74,22 @@ export default function TugasListScreen() {
       
       if (result.success && result.submissions) {
         // Convert submissions array to status map
+        // Note: In the database, assignment ID is stored in "title" field
         const newStatusMap: TaskStatusMap = {};
         result.submissions.forEach((submission) => {
-          newStatusMap[submission.assignmentId] = "submitted";
+          const assignmentId = submission.title; // "1", "2", "3", etc.
+          newStatusMap[assignmentId] = "submitted";
+          console.log(`✅ Assignment ${assignmentId} marked as submitted`);
         });
         
         setStatusMap(newStatusMap);
-        console.log("✅ Assignment status loaded from database");
+        console.log("✅ Assignment status loaded from database:", newStatusMap);
       } else {
         // Fallback to local storage
         console.log("⚠️ Database load failed, using local storage");
         const localStatus = await loadObject<TaskStatusMap>("task-status", {});
         setStatusMap(localStatus);
+        console.log("📦 Local status:", localStatus);
       }
     } catch (error) {
       console.error("❌ Error loading assignment status:", error);

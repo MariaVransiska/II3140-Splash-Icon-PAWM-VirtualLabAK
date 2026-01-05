@@ -149,10 +149,10 @@ export default function QuizListScreen() {
             );
           })
         )}
-      </MainScreenLayout>
-    );
-  }
-
+      </ScrollView>
+    </MainScreenLayout>
+  );
+}
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 20,

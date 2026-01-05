@@ -1,19 +1,21 @@
 /**
  * Assignment Service (Simplified)
- * Handles assignment submissions using assignments_submitted JSONB column
+ * ONLY VALIDATES assignments from progress.assignments (data already exists in DB)
+ * NO SUBMIT - just check if assignment is in progress.assignments array
  */
 
 import { supabase } from '../client';
 
 export type AssignmentSubmission = {
   assignmentId: string;
-  title: string;
-  fileName: string;
+  title: string; // This holds the actual assignment ID like "1", "2", "3"
+  fileName: string; // This holds the assignment title
+  fileData: string; // This holds the uploaded file name
   submittedAt: string;
 };
 
 // ============================================
-// SUBMIT ASSIGNMENT
+// SUBMIT ASSIGNMENT (keeps adding to progress.assignments)
 // ============================================
 
 export async function submitAssignment(
@@ -25,10 +27,10 @@ export async function submitAssignment(
   try {
     console.log('📤 Submitting assignment to database...');
     
-    // Get current submissions
+    // Get current progress
     const { data: userData, error: fetchError } = await supabase
       .from('users')
-      .select('assignments_submitted')
+      .select('progress')
       .eq('id', userId)
       .single();
 
@@ -40,34 +42,48 @@ export async function submitAssignment(
       };
     }
 
-    const currentSubmissions = (userData?.assignments_submitted as AssignmentSubmission[]) || [];
+    const progress = userData?.progress || {
+      assignments: [],
+      quizScores: [],
+      videosWatched: [],
+      journalEntries: [],
+      materialsViewed: [],
+    };
+
+    const currentAssignments = (progress.assignments as AssignmentSubmission[]) || [];
     
-    // Check if already submitted
-    const existingIndex = currentSubmissions.findIndex(
-      (s: AssignmentSubmission) => s.assignmentId === assignmentId
+    // Check if already submitted (check by title which holds assignmentId)
+    const existingIndex = currentAssignments.findIndex(
+      (s: AssignmentSubmission) => s.title === assignmentId
     );
 
     const newSubmission: AssignmentSubmission = {
-      assignmentId,
-      title,
-      fileName,
+      assignmentId: crypto.randomUUID(), // Unique submission ID
+      title: assignmentId, // "1", "2", "3" - the actual assignment ID
+      fileName: title, // "Tugas 1 - Jurnal Mingguan" - assignment title
+      fileData: fileName, // "document.pdf" - uploaded file name
       submittedAt: new Date().toISOString(),
     };
 
-    let updatedSubmissions: AssignmentSubmission[];
+    let updatedAssignments: AssignmentSubmission[];
     if (existingIndex >= 0) {
       // Update existing submission
-      updatedSubmissions = [...currentSubmissions];
-      updatedSubmissions[existingIndex] = newSubmission;
+      updatedAssignments = [...currentAssignments];
+      updatedAssignments[existingIndex] = newSubmission;
+      console.log(`✅ Updated existing assignment ${assignmentId}`);
     } else {
       // Add new submission
-      updatedSubmissions = [...currentSubmissions, newSubmission];
+      updatedAssignments = [...currentAssignments, newSubmission];
+      console.log(`✅ Added new assignment ${assignmentId}`);
     }
+
+    // Update progress.assignments
+    progress.assignments = updatedAssignments;
 
     // Update database
     const { error: updateError } = await supabase
       .from('users')
-      .update({ assignments_submitted: updatedSubmissions })
+      .update({ progress })
       .eq('id', userId);
 
     if (updateError) {
@@ -93,7 +109,7 @@ export async function submitAssignment(
 }
 
 // ============================================
-// GET SUBMITTED ASSIGNMENTS
+// GET SUBMITTED ASSIGNMENTS (from progress.assignments)
 // ============================================
 
 export async function getSubmittedAssignments(
@@ -104,7 +120,7 @@ export async function getSubmittedAssignments(
     
     const { data, error } = await supabase
       .from('users')
-      .select('assignments_submitted')
+      .select('progress')
       .eq('id', userId)
       .single();
 
@@ -117,11 +133,14 @@ export async function getSubmittedAssignments(
       };
     }
 
-    console.log('✅ Assignments loaded successfully');
+    const progress = data.progress || { assignments: [] };
+    const assignments = (progress.assignments as AssignmentSubmission[]) || [];
+
+    console.log('✅ Assignments loaded successfully:', assignments.length);
     return {
       success: true,
       message: 'Assignments loaded successfully',
-      submissions: (data.assignments_submitted as AssignmentSubmission[]) || [],
+      submissions: assignments,
     };
   } catch (error: any) {
     console.error('❌ Get assignments exception:', error);
@@ -143,15 +162,12 @@ export async function isAssignmentSubmitted(
 ): Promise<boolean> {
   try {
     const result = await getSubmittedAssignments(userId);
-    if (!result.success || !result.submissions) {
-      return false;
-    }
-
-    return result.submissions.some(
-      (s: AssignmentSubmission) => s.assignmentId === assignmentId
-    );
+    if (!result.success || !result.submissions) return false;
+    
+    // Check by title field (which stores the assignmentId like "1", "2", "3")
+    return result.submissions.some((s: AssignmentSubmission) => s.title === assignmentId);
   } catch (error) {
-    console.error('❌ Check assignment exception:', error);
+    console.error('❌ Check assignment error:', error);
     return false;
   }
 }

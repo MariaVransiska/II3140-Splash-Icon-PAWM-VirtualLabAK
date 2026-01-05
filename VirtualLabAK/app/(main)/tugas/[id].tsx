@@ -130,12 +130,16 @@ export default function TaskDetailScreen() {
 
         if (Platform.OS === 'web') {
           alert("Jawaban tugas berhasil dikirim!");
-          router.back();
+          // Use replace instead of back to force reload
+          router.replace("/(main)/tugas");
         } else {
           Alert.alert("Berhasil", "Jawaban tugas berhasil dikirim.", [
             {
               text: "OK",
-              onPress: () => router.back(),
+              onPress: () => {
+                // Use replace instead of back to force reload
+                router.replace("/(main)/tugas");
+              },
             },
           ]);
         }
