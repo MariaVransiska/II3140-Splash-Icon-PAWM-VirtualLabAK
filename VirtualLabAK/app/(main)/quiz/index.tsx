@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { MainScreenLayout } from "@/components/MainScreenLayout";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { loadObject } from "@/utils/storage";
+import { getQuizScores } from "@/lib/supabase";
 
 type QuizItem = {
   id: string;
@@ -25,30 +27,86 @@ const QUIZZES: QuizItem[] = [
 ];
 
 export default function QuizListScreen() {
-    const router = useRouter();
-    const [resultMap, setResultMap] = useState<QuizStatusMap>({});
-  
-    useEffect(() => {
-      loadObject<QuizStatusMap>("quiz-result", {}).then(setResultMap);
-    }, []);
+  const router = useRouter();
+  const [resultMap, setResultMap] = useState<QuizStatusMap>({});
+  const [loading, setLoading] = useState(true);
+
+  // Reload data setiap kali screen difokuskan
+  useFocusEffect(
+    useCallback(() => {
+      loadQuizScores();
+    }, [])
+  );
+
+  const loadQuizScores = async () => {
+    try {
+      console.log("📋 Loading quiz scores...");
+      setLoading(true);
+
+      // Get user session
+      const session = await loadObject("userSession", null);
+      
+      if (!session || !session.userId) {
+        console.log("⚠️ No session, using local storage");
+        const localScores = await loadObject<QuizStatusMap>("quiz-result", {});
+        setResultMap(localScores);
+        return;
+      }
+
+      // Fetch from database
+      const result = await getQuizScores(session.userId);
+      
+      if (result.success && result.scores) {
+        // Convert scores array to status map
+        const newResultMap: QuizStatusMap = {};
+        result.scores.forEach((quizScore) => {
+          newResultMap[quizScore.quizId] = { score: quizScore.score };
+        });
+        
+        setResultMap(newResultMap);
+        console.log("✅ Quiz scores loaded from database");
+      } else {
+        // Fallback to local storage
+        console.log("⚠️ Database load failed, using local storage");
+        const localScores = await loadObject<QuizStatusMap>("quiz-result", {});
+        setResultMap(localScores);
+      }
+    } catch (error) {
+      console.error("❌ Error loading quiz scores:", error);
+      // Fallback to local storage
+      const localScores = await loadObject<QuizStatusMap>("quiz-result", {});
+      setResultMap(localScores);
+    } finally {
+      setLoading(false);
+    }
+  };
   
     const isDone = (id: string) => !!resultMap[id];
   
-    const goToQuiz = (quiz: QuizItem) => {
-      if (!quiz.opened) return;
-      router.push(`/(main)/quiz/${quiz.id}`);
-    };
-  
-    return (
-      <MainScreenLayout title="Quiz" showBack>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-        >
-          {QUIZZES.map((quiz) => {
+  const getScore = (id: string) => resultMap[id]?.score || null;
+
+  const goToQuiz = (quiz: QuizItem) => {
+    if (!quiz.opened) return;
+    router.push(`/(main)/quiz/${quiz.id}`);
+  };
+
+  return (
+    <MainScreenLayout title="Quiz" showBack>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0EA5A6" />
+            <Text style={styles.loadingText}>Memuat kuis...</Text>
+          </View>
+        ) : (
+          QUIZZES.map((quiz) => {
             const done = isDone(quiz.id);
-  
+            const score = getScore(quiz.id);
+
             return (
               <Pressable
                 key={quiz.id}
@@ -56,17 +114,18 @@ export default function QuizListScreen() {
                 style={[
                   styles.card,
                   !quiz.opened && styles.cardLocked,
+                  done && quiz.opened && styles.cardCompleted,
                 ]}
               >
                 <View
                   style={[
                     styles.circle,
-                    quiz.opened ? styles.circleOpened : styles.circleLocked,
+                    quiz.opened ? (done ? styles.circleCompleted : styles.circleOpened) : styles.circleLocked,
                   ]}
                 >
                   {done && <View style={styles.innerDot} />}
                 </View>
-  
+
                 <View style={styles.textCol}>
                   <Text style={styles.title}>{quiz.title}</Text>
                   <Text
@@ -74,22 +133,22 @@ export default function QuizListScreen() {
                       styles.status,
                       quiz.opened
                         ? done
-                          ? styles.statusOpen
-                          : styles.statusClosed
+                          ? styles.statusCompleted
+                          : styles.statusOpen
                         : styles.statusClosed,
                     ]}
                   >
                     {!quiz.opened
                       ? "Belum dibuka"
                       : done
-                      ? "Sudah dikerjakan"
+                      ? `Nilai Tertinggi: ${score}`
                       : "Sudah dibuka"}
                   </Text>
                 </View>
               </Pressable>
             );
-          })}
-        </ScrollView>
+          })
+        )}
       </MainScreenLayout>
     );
   }
@@ -97,6 +156,16 @@ export default function QuizListScreen() {
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
   },
   card: {
     flexDirection: "row",
@@ -116,6 +185,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F87171",
   },
+  cardCompleted: {
+    backgroundColor: "#DCFCE7",
+    borderWidth: 1,
+    borderColor: "#16A34A",
+  },
   circle: {
     width: 26,
     height: 26,
@@ -128,6 +202,10 @@ const styles = StyleSheet.create({
   circleOpened: {
     borderColor: "#16A34A",
   },
+  circleCompleted: {
+    borderColor: "#16A34A",
+    backgroundColor: "#16A34A",
+  },
   circleLocked: {
     borderColor: "#111827",
   },
@@ -135,7 +213,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#16A34A",
+    backgroundColor: "#FFFFFF",
   },
   textCol: {
     flex: 1,
@@ -148,9 +226,13 @@ const styles = StyleSheet.create({
   },
   status: {
     fontSize: 12,
+    fontWeight: "600",
   },
   statusOpen: {
     color: "#16A34A",
+  },
+  statusCompleted: {
+    color: "#166534",
   },
   statusClosed: {
     color: "#DC2626",

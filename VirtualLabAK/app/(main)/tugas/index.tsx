@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { MainScreenLayout } from "@/components/MainScreenLayout";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { loadObject } from "@/utils/storage";
+import { getSubmittedAssignments } from "@/lib/supabase";
 
 type TaskItem = {
   id: string;
@@ -35,12 +37,59 @@ const TASKS: TaskItem[] = [
 ];
 
 export default function TugasListScreen() {
-    const router = useRouter();
-    const [statusMap, setStatusMap] = useState<TaskStatusMap>({});
-  
-    useEffect(() => {
-      loadObject<TaskStatusMap>("task-status", {}).then(setStatusMap);
-    }, []);
+  const router = useRouter();
+  const [statusMap, setStatusMap] = useState<TaskStatusMap>({});
+  const [loading, setLoading] = useState(true);
+
+  // Reload data setiap kali screen difokuskan
+  useFocusEffect(
+    useCallback(() => {
+      loadAssignmentStatus();
+    }, [])
+  );
+
+  const loadAssignmentStatus = async () => {
+    try {
+      console.log("📋 Loading assignment status...");
+      setLoading(true);
+
+      // Get user session
+      const session = await loadObject("userSession", null);
+      
+      if (!session || !session.userId) {
+        console.log("⚠️ No session, using local storage");
+        const localStatus = await loadObject<TaskStatusMap>("task-status", {});
+        setStatusMap(localStatus);
+        return;
+      }
+
+      // Fetch from database
+      const result = await getSubmittedAssignments(session.userId);
+      
+      if (result.success && result.submissions) {
+        // Convert submissions array to status map
+        const newStatusMap: TaskStatusMap = {};
+        result.submissions.forEach((submission) => {
+          newStatusMap[submission.assignmentId] = "submitted";
+        });
+        
+        setStatusMap(newStatusMap);
+        console.log("✅ Assignment status loaded from database");
+      } else {
+        // Fallback to local storage
+        console.log("⚠️ Database load failed, using local storage");
+        const localStatus = await loadObject<TaskStatusMap>("task-status", {});
+        setStatusMap(localStatus);
+      }
+    } catch (error) {
+      console.error("❌ Error loading assignment status:", error);
+      // Fallback to local storage
+      const localStatus = await loadObject<TaskStatusMap>("task-status", {});
+      setStatusMap(localStatus);
+    } finally {
+      setLoading(false);
+    }
+  };
   
     const openDetail = (task: TaskItem) => {
       router.push(`/(main)/tugas/${task.id}`);
@@ -55,8 +104,14 @@ export default function TugasListScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
-          >
-          {TASKS.map((task) => {
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0EA5A6" />
+            <Text style={styles.loadingText}>Memuat tugas...</Text>
+          </View>
+        ) : (
+          TASKS.map((task) => {
             const status = getStatus(task.id);
             return (
               <Pressable
@@ -89,20 +144,31 @@ export default function TugasListScreen() {
                         : styles.statusTextUnanswered,
                     ]}
                   >
-                    {status === "submitted" ? "Submitted" : "Unanswered"}
+                    {status === "submitted" ? "Answered" : "Unanswered"}
                   </Text>
                 </View>
               </Pressable>
             );
-          })}
-        </ScrollView>
-      </MainScreenLayout>
-    );
-  }
+          })
+        )}
+      </ScrollView>
+    </MainScreenLayout>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
   },
   card: {
     flexDirection: "row",

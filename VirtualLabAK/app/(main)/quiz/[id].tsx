@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Pressable, Alert } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { ScrollView, StyleSheet, Text, View, Pressable, Alert, Platform, ActivityIndicator } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { MainScreenLayout } from "@/components/MainScreenLayout";
 import { loadObject, saveObject } from "@/utils/storage";
+import { saveQuizScore } from "@/lib/supabase";
 
 type Question = {
   id: number;
@@ -78,14 +79,19 @@ type QuizResult = {
 
 export default function QuizDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const quizId = id ?? "1";
+  const quizTitle = `Kuis ${quizId} - Siapakah Kristus`;
 
   const [answers, setAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>(
     {}
   );
   const [score, setScore] = useState<number | null>(null);
+  const [userId, setUserId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    loadUserId();
     loadObject<QuizResult>("quiz-result", {}).then((all) => {
       const prev = all[quizId];
       if (prev) {
@@ -95,6 +101,17 @@ export default function QuizDetailScreen() {
     });
   }, [quizId]);
 
+  const loadUserId = async () => {
+    try {
+      const session = await loadObject("userSession", null);
+      if (session && session.userId) {
+        setUserId(session.userId);
+      }
+    } catch (error) {
+      console.error("❌ Error loading user session:", error);
+    }
+  };
+
   const selectOption = (qId: number, option: "A" | "B" | "C" | "D") => {
     setAnswers((prev) => ({ ...prev, [qId]: option }));
   };
@@ -102,31 +119,67 @@ export default function QuizDetailScreen() {
   const onSubmit = async () => {
     const unanswered = SAMPLE_QUESTIONS.filter((q) => !answers[q.id]);
     if (unanswered.length > 0) {
-      Alert.alert(
-        "Belum lengkap",
-        "Masih ada soal yang belum dijawab."
-      );
+      if (Platform.OS === 'web') {
+        alert("Masih ada soal yang belum dijawab.");
+      } else {
+        Alert.alert("Belum lengkap", "Masih ada soal yang belum dijawab.");
+      }
       return;
     }
 
-    let correctCount = 0;
-    SAMPLE_QUESTIONS.forEach((q) => {
-      if (answers[q.id] === q.correct) correctCount += 1;
-    });
-    const newScore = Math.round(
-      (correctCount / SAMPLE_QUESTIONS.length) * 100
-    );
-    setScore(newScore);
+    try {
+      console.log("📊 Submitting quiz...");
+      setSubmitting(true);
 
-    // simpan ke storage
-    const all = await loadObject<QuizResult>("quiz-result", {});
-    const next: QuizResult = {
-      ...all,
-      [quizId]: { score: newScore, answers },
-    };
-    await saveObject("quiz-result", next);
+      let correctCount = 0;
+      SAMPLE_QUESTIONS.forEach((q) => {
+        if (answers[q.id] === q.correct) correctCount += 1;
+      });
+      const newScore = Math.round(
+        (correctCount / SAMPLE_QUESTIONS.length) * 100
+      );
+      setScore(newScore);
 
-    Alert.alert("Quiz disimpan", `Skor kamu: ${newScore}`);
+      // Save to local storage
+      const all = await loadObject<QuizResult>("quiz-result", {});
+      const next: QuizResult = {
+        ...all,
+        [quizId]: { score: newScore, answers },
+      };
+      await saveObject("quiz-result", next);
+
+      // Save to database if user is logged in
+      if (userId) {
+        const result = await saveQuizScore(userId, quizId, quizTitle, newScore);
+        
+        if (result.success) {
+          console.log("✅ Quiz score saved to database");
+        } else {
+          console.log("⚠️ Failed to save to database:", result.message);
+        }
+      }
+
+      if (Platform.OS === 'web') {
+        alert(`Skor kamu: ${newScore}`);
+      } else {
+        Alert.alert("Quiz disimpan", `Skor kamu: ${newScore}`, [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]);
+      }
+    } catch (error: any) {
+      console.error("❌ Submit error:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Terjadi kesalahan: " + error.message);
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan: " + error.message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

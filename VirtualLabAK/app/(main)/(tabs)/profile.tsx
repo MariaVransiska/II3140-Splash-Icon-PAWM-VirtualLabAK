@@ -9,12 +9,13 @@ import {
   View,
   Image,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { loadObject, saveObject } from "@/utils/storage";
+import { loadObject, saveObject, removeItem } from "@/utils/storage";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getProfile, updateProfile, logout } from "@/lib/supabase";
 
 type ProfileData = {
   nama: string;
@@ -30,46 +31,142 @@ export default function ProfileScreen() {
   const [nim, setNim] = useState("");
   const [kelas, setKelas] = useState("");
   const [gender, setGender] = useState("");
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [kelasOpen, setKelasOpen] = useState(false);
   const [genderOpen, setGenderOpen] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const stored = await loadObject<ProfileData>("profile", {
-        nama: "",
-        nim: "",
-        kelas: "",
-        gender: "",
-      });
-      setNama(stored.nama ?? "");
-      setNim(stored.nim ?? "");
-      setKelas(stored.kelas ?? "");
-      setGender(stored.gender ?? "");
-    })();
+    loadProfile();
   }, []);
 
+  const loadProfile = async () => {
+    try {
+      console.log(" Loading profile from database...");
+      setLoading(true);
+
+      // Get user session
+      const session = await loadObject("userSession", null);
+      
+      if (!session || !session.userId) {
+        console.log(" No session found, redirecting to login");
+        router.replace("/(auth)/login" as any);
+        return;
+      }
+
+      setUserId(session.userId);
+      console.log(" User ID:", session.userId);
+
+      // Fetch profile from Supabase
+      const result = await getProfile(session.userId);
+      
+      if (result.success && result.profile) {
+        console.log(" Profile loaded:", result.profile);
+        setNama(result.profile.name || "");
+        setNim(result.profile.nim || "");
+        setKelas(result.profile.kelas || "");
+        setGender(result.profile.gender || "");
+      } else {
+        console.log(" Failed to load profile:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Gagal memuat profil: " + result.message);
+        } else {
+          Alert.alert("Error", "Gagal memuat profil: " + result.message);
+        }
+      }
+    } catch (error: any) {
+      console.error(" Error loading profile:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Terjadi kesalahan: " + error.message);
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan: " + error.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onSaveProfile = async () => {
-    const data: ProfileData = { nama, nim, kelas, gender };
-    await saveObject("profile", data);
-    Alert.alert("Profil disimpan", "Data profil Anda berhasil diperbarui.");
+    if (!userId) {
+      if (Platform.OS === 'web') {
+        alert("Session tidak valid. Silakan login kembali.");
+      } else {
+        Alert.alert("Error", "Session tidak valid. Silakan login kembali.");
+      }
+      return;
+    }
+
+    try {
+      console.log("💾 Saving profile...");
+      setSaving(true);
+
+      const result = await updateProfile(userId, {
+        name: nama,
+        nim,
+        kelas,
+        gender,
+      });
+      if (result.success) {
+        console.log(" Profile saved successfully");
+        
+        if (Platform.OS === 'web') {
+          alert("Profil berhasil diperbarui!");
+        } else {
+          Alert.alert("Sukses", "Profil berhasil diperbarui!");
+        }
+      } else {
+        console.log(" Failed to save profile:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Gagal menyimpan profil: " + result.message);
+        } else {
+          Alert.alert("Error", "Gagal menyimpan profil: " + result.message);
+        }
+      }
+    } catch (error: any) {
+      console.error(" Error saving profile:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Terjadi kesalahan: " + error.message);
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan: " + error.message);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onLogout = () => {
-    Alert.alert("Logout", "Anda akan keluar dari akun ini.", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await AsyncStorage.removeItem("logged-in");
-          } catch (e) {
-          }
-          router.replace("/(auth)/login");
+    const confirmLogout = async () => {
+      try {
+        console.log("🚪 Logging out...");
+        await logout();
+        await removeItem("userSession");
+        console.log("✅ Logout successful");
+        router.replace("/(auth)/login" as any);
+      } catch (error) {
+        console.error("❌ Logout error:", error);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (confirm("Anda yakin ingin logout?")) {
+        confirmLogout();
+      }
+    } else {
+      Alert.alert("Logout", "Anda akan keluar dari akun ini.", [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: confirmLogout,
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const profileIcon =
@@ -105,7 +202,14 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.wrapper}>
-            <View style={styles.cardDashed}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0EA5A6" />
+                <Text style={styles.loadingText}>Memuat profil...</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.cardDashed}>
               <View style={styles.photoWrapper}>
                 <Image
                   source={profileIcon}
@@ -220,14 +324,24 @@ export default function ProfileScreen() {
                 )}
               </View>
 
-              <Pressable style={styles.saveBtn} onPress={onSaveProfile}>
-                <Text style={styles.saveText}>Simpan Profil</Text>
+              <Pressable 
+                style={[styles.saveBtn, saving && styles.saveBtnDisabled]} 
+                onPress={onSaveProfile}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveText}>Simpan Profil</Text>
+                )}
               </Pressable>
             </View>
 
             <Pressable style={styles.logoutBtn} onPress={onLogout}>
               <Text style={styles.logoutText}>Logout</Text>
             </Pressable>
+              </>
+            )}
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -279,6 +393,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#6B7280",
+  },
+
   cardDashed: {
     borderRadius: RADIUS,
     backgroundColor: "#FFFFFF",
@@ -326,6 +453,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#0EA5A6",
     paddingVertical: 11,
     alignItems: "center",
+  },
+  saveBtnDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   saveText: {
     fontFamily: "Poppins_700Bold",

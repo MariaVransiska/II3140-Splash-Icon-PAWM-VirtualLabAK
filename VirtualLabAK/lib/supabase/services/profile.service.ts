@@ -10,8 +10,14 @@ import { UserProfile } from '../../types/database.types';
 // GET USER PROFILE
 // ============================================
 
-export async function getProfile(userId: string): Promise<UserProfile | null> {
+export async function getProfile(userId: string): Promise<{
+  success: boolean;
+  message: string;
+  profile?: UserProfile;
+}> {
   try {
+    console.log('📋 Fetching profile for user:', userId);
+    
     const { data, error } = await supabase
       .from('users')
       .select('id, email, name, nim, kelas, gender, progress, statistics, created_at, updated_at, last_login')
@@ -19,14 +25,33 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
       .single();
 
     if (error) {
-      console.error('Get profile error:', error);
-      return null;
+      console.error('❌ Get profile error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch profile',
+      };
     }
 
-    return data as UserProfile;
-  } catch (error) {
-    console.error('Get profile exception:', error);
-    return null;
+    if (!data) {
+      console.error('❌ No profile data found');
+      return {
+        success: false,
+        message: 'Profile not found',
+      };
+    }
+
+    console.log('✅ Profile fetched successfully');
+    return {
+      success: true,
+      message: 'Profile fetched successfully',
+      profile: data as UserProfile,
+    };
+  } catch (error: any) {
+    console.error('❌ Get profile exception:', error);
+    return {
+      success: false,
+      message: error.message || 'An error occurred while fetching profile',
+    };
   }
 }
 

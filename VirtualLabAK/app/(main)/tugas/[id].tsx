@@ -7,11 +7,13 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MainScreenLayout } from "@/components/MainScreenLayout";
 import { loadObject, saveObject } from "@/utils/storage";
+import { submitAssignment } from "@/lib/supabase";
 
 type TaskItem = {
   id: string;
@@ -53,12 +55,25 @@ export default function TaskDetailScreen() {
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [userId, setUserId] = useState("");
 
   useEffect(() => {
     if (!task) {
       router.replace("/(main)/tugas");
     }
+    loadUserId();
   }, [task, router]);
+
+  const loadUserId = async () => {
+    try {
+      const session = await loadObject("userSession", null);
+      if (session && session.userId) {
+        setUserId(session.userId);
+      }
+    } catch (error) {
+      console.error("❌ Error loading user session:", error);
+    }
+  };
 
   const pickFile = async () => {
     try {
@@ -81,24 +96,66 @@ export default function TaskDetailScreen() {
 
   const onSubmit = async () => {
     if (!fileName) {
-      Alert.alert("Upload dulu", "Silakan upload file jawaban terlebih dahulu.");
+      if (Platform.OS === 'web') {
+        alert("Silakan upload file jawaban terlebih dahulu.");
+      } else {
+        Alert.alert("Upload dulu", "Silakan upload file jawaban terlebih dahulu.");
+      }
+      return;
+    }
+
+    if (!userId) {
+      if (Platform.OS === 'web') {
+        alert("Session tidak valid. Silakan login kembali.");
+      } else {
+        Alert.alert("Error", "Session tidak valid. Silakan login kembali.");
+      }
       return;
     }
 
     try {
+      console.log("📤 Submitting assignment...");
       setSubmitting(true);
-      const current = await loadObject<TaskStatusMap>("task-status", {});
-      const next: TaskStatusMap = { ...current, [id!]: "submitted" };
-      await saveObject("task-status", next);
 
-      Alert.alert("Berhasil", "Jawaban tugas berhasil dikirim.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
-    } catch (e) {
-      Alert.alert("Error", "Gagal mengirim jawaban.");
+      // Submit to database
+      const result = await submitAssignment(userId, id!, task!.title, fileName);
+
+      if (result.success) {
+        // Also save to local storage for backward compatibility
+        const current = await loadObject<TaskStatusMap>("task-status", {});
+        const next: TaskStatusMap = { ...current, [id!]: "submitted" };
+        await saveObject("task-status", next);
+
+        console.log("✅ Assignment submitted successfully");
+
+        if (Platform.OS === 'web') {
+          alert("Jawaban tugas berhasil dikirim!");
+          router.back();
+        } else {
+          Alert.alert("Berhasil", "Jawaban tugas berhasil dikirim.", [
+            {
+              text: "OK",
+              onPress: () => router.back(),
+            },
+          ]);
+        }
+      } else {
+        console.log("❌ Failed to submit assignment:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Gagal mengirim jawaban: " + result.message);
+        } else {
+          Alert.alert("Error", "Gagal mengirim jawaban: " + result.message);
+        }
+      }
+    } catch (e: any) {
+      console.error("❌ Submit error:", e);
+      
+      if (Platform.OS === 'web') {
+        alert("Terjadi kesalahan: " + e.message);
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan: " + e.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -137,13 +194,16 @@ export default function TaskDetailScreen() {
             onPress={onSubmit}
             style={({ pressed }) => [
               styles.submitButton,
+              submitting && styles.submitButtonDisabled,
               pressed && Platform.OS === "ios" && { opacity: 0.7 },
             ]}
             disabled={submitting}
           >
-            <Text style={styles.submitText}>
-              {submitting ? "Submitting..." : "Submit"}
-            </Text>
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.submitText}>Submit</Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -221,6 +281,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 10,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 40,
+  },
+  submitButtonDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   submitText: {
     fontFamily: "Poppins_700Bold",

@@ -9,25 +9,148 @@ import {
   TextInput,
   View,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { saveObject, loadObject } from "@/utils/storage";
+import { saveJournalText, getJournalText } from "@/lib/supabase";
+import { useRouter } from "expo-router";
 
 export default function JournalTab() {
+  const router = useRouter();
   const [text, setText] = useState("");
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadObject<string>("journal-latest", "").then(setText);
+    loadJournal();
   }, []);
 
+  const loadJournal = async () => {
+    try {
+      console.log("📔 Loading journal from database...");
+      setLoading(true);
+
+      // Get user session
+      const session = await loadObject("userSession", null);
+      
+      if (!session || !session.userId) {
+        console.log("❌ No session found, redirecting to login");
+        router.replace("/(auth)/login" as any);
+        return;
+      }
+
+      setUserId(session.userId);
+
+      // Fetch journal text from Supabase
+      const result = await getJournalText(session.userId);
+      
+      if (result.success) {
+        setText(result.content || "");
+        console.log("✅ Journal loaded from database");
+      } else {
+        console.log("⚠️ Failed to load journal, using local storage");
+        // Fallback to local storage
+        const localJournal = await loadObject<string>("journal-latest", "");
+        setText(localJournal);
+      }
+    } catch (error: any) {
+      console.error("❌ Error loading journal:", error);
+      // Fallback to local storage
+      const localJournal = await loadObject<string>("journal-latest", "");
+      setText(localJournal);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onSave = async () => {
-    await saveObject("journal-latest", text);
+    if (!userId) {
+      if (Platform.OS === 'web') {
+        alert("Session tidak valid. Silakan login kembali.");
+      } else {
+        Alert.alert("Error", "Session tidak valid. Silakan login kembali.");
+      }
+      return;
+    }
+
+    if (!text.trim()) {
+      if (Platform.OS === 'web') {
+        alert("Journal tidak boleh kosong");
+      } else {
+        Alert.alert("Error", "Journal tidak boleh kosong");
+      }
+      return;
+    }
+
+    try {
+      console.log("💾 Saving journal to database...");
+      setSaving(true);
+
+      const result = await saveJournalText(userId, text);
+
+      if (result.success) {
+        // Also save to local storage for offline access
+        await saveObject("journal-latest", text);
+        
+        console.log("✅ Journal saved successfully");
+        
+        if (Platform.OS === 'web') {
+          alert("Journal berhasil disimpan!");
+        } else {
+          Alert.alert("Sukses", "Journal berhasil disimpan!");
+        }
+      } else {
+        console.log("❌ Failed to save journal:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Gagal menyimpan journal: " + result.message);
+        } else {
+          Alert.alert("Error", "Gagal menyimpan journal: " + result.message);
+        }
+      }
+    } catch (error: any) {
+      console.error("❌ Error saving journal:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Terjadi kesalahan: " + error.message);
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan: " + error.message);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onClear = async () => {
-    setText("");
-    await saveObject("journal-latest", "");
+    const confirmClear = () => {
+      setText("");
+      saveObject("journal-latest", "");
+      
+      if (Platform.OS === 'web') {
+        alert("Journal dihapus");
+      } else {
+        Alert.alert("Info", "Journal dihapus");
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (confirm("Yakin ingin menghapus journal?")) {
+        confirmClear();
+      }
+    } else {
+      Alert.alert(
+        "Konfirmasi",
+        "Yakin ingin menghapus journal?",
+        [
+          { text: "Batal", style: "cancel" },
+          { text: "Hapus", style: "destructive", onPress: confirmClear },
+        ]
+      );
+    }
   };
 
   return (
@@ -62,33 +185,50 @@ export default function JournalTab() {
             contentContainerStyle={{ paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Jurnal Harian</Text>
-
-              <View style={styles.dashedBox}>
-                <TextInput
-                  style={styles.textArea}
-                  multiline
-                  textAlignVertical="top"
-                  placeholder="Tuliskan doa, catatan rohani, atau notes kelas"
-                  placeholderTextColor="#D4D4D8"
-                  value={text}
-                  onChangeText={setText}
-                />
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#0EA5A6" />
+                <Text style={styles.loadingText}>Memuat journal...</Text>
               </View>
+            ) : (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Jurnal Harian</Text>
 
-              <View style={styles.buttonRow}>
-                <Pressable style={styles.btnPrimary} onPress={onSave}>
-                  <Text style={styles.btnTextPrimary}>Simpan</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.btnPrimary, styles.btnDanger]}
-                  onPress={onClear}
-                >
-                  <Text style={styles.btnTextDanger}>Hapus</Text>
-                </Pressable>
+                <View style={styles.dashedBox}>
+                  <TextInput
+                    style={styles.textArea}
+                    multiline
+                    textAlignVertical="top"
+                    placeholder="Tuliskan doa, catatan rohani, atau notes kelas"
+                    placeholderTextColor="#D4D4D8"
+                    value={text}
+                    onChangeText={setText}
+                    editable={!saving}
+                  />
+                </View>
+
+                <View style={styles.buttonRow}>
+                  <Pressable 
+                    style={[styles.btnPrimary, saving && styles.btnDisabled]} 
+                    onPress={onSave}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Text style={styles.btnTextPrimary}>Simpan</Text>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    style={[styles.btnPrimary, styles.btnDanger, saving && styles.btnDisabled]}
+                    onPress={onClear}
+                    disabled={saving}
+                  >
+                    <Text style={styles.btnTextDanger}>Hapus</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -148,6 +288,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#6B7280",
+  },
+
   dashedBox: {
     borderWidth: 2,
     borderStyle: "dashed",
@@ -174,8 +327,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS,
     paddingHorizontal: 28,
     paddingVertical: 11,
-    alignItems: "center",
     backgroundColor: "#0EA5A6",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 100,
+  },
+  btnDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   btnDanger: {
     backgroundColor: "#DC2626",
