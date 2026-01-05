@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -8,22 +9,78 @@ import {
   Text,
   TextInput,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { login } from "@/lib/supabase";
+import { saveObject } from "@/utils/storage";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const goToRegister = () => {
     router.push("/(auth)/register" as never);
   };
 
-  const onLogin = () => {
-    router.replace("/(main)/(tabs)/home");
+  const onLogin = async () => {
+    if (!email || !password) {
+      if (Platform.OS === 'web') {
+        alert("Email dan password wajib diisi");
+      } else {
+        Alert.alert("Error", "Email dan password wajib diisi");
+      }
+      return;
+    }
+
+    setLoading(true);
+    console.log("🔐 Attempting login with:", email);
+    
+    try {
+      const result = await login({ email, password });
+      console.log("📋 Login result:", result);
+
+      if (result.success && result.user) {
+        // Simpan user session ke local storage
+        await saveObject("userSession", {
+          userId: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+        });
+
+        console.log("✅ Login successful, navigating to home");
+        
+        if (Platform.OS === 'web') {
+          alert("Login berhasil!");
+        } else {
+          Alert.alert("Sukses", result.message);
+        }
+        
+        router.replace("/(main)/(tabs)/home" as any);
+      } else {
+        console.log("❌ Login failed:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Login Gagal: " + result.message);
+        } else {
+          Alert.alert("Login Gagal", result.message);
+        }
+      }
+    } catch (error: any) {
+      console.error("💥 Login error:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Error: " + (error.message || "Terjadi kesalahan"));
+      } else {
+        Alert.alert("Error", error.message || "Terjadi kesalahan");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -81,8 +138,16 @@ export default function LoginScreen() {
                 />
               </View>
 
-              <Pressable style={styles.primaryBtn} onPress={onLogin}>
-                <Text style={styles.primaryText}>Masuk</Text>
+              <Pressable 
+                style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]} 
+                onPress={onLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryText}>Masuk</Text>
+                )}
               </Pressable>
 
               <View style={styles.registerRow}>
@@ -193,6 +258,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#0EA5A6",
     paddingVertical: 11,
     alignItems: "center",
+  },
+  primaryBtnDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   primaryText: {
     fontFamily: "Poppins_600SemiBold",

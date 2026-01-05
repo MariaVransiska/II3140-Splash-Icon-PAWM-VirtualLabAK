@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -8,10 +9,12 @@ import {
   TextInput,
   View,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { register } from "@/lib/supabase";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -23,13 +26,103 @@ export default function RegisterScreen() {
   const [gender, setGender] = useState("");
   const [genderOpen, setGenderOpen] = useState(false);
   const [kelasOpen, setKelasOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const goToLogin = () => {
     router.back();
   };
 
-  const onRegister = () => {
-    router.replace("/(auth)/login");
+  const onRegister = async () => {
+    console.log("📝 Register attempt with:", { nama, email, nim, kelas, gender });
+    
+    // Validasi input
+    if (!nama || !email || !password || !nim || !kelas || !gender) {
+      const message = "Semua field wajib diisi";
+      console.log("❌ Validation failed:", message);
+      
+      if (Platform.OS === 'web') {
+        alert(message);
+      } else {
+        Alert.alert("Error", message);
+      }
+      return;
+    }
+
+    if (nim.length !== 8) {
+      const message = "NIM harus 8 digit";
+      console.log("❌ Validation failed:", message);
+      
+      if (Platform.OS === 'web') {
+        alert(message);
+      } else {
+        Alert.alert("Error", message);
+      }
+      return;
+    }
+
+    if (password.length < 6) {
+      const message = "Password minimal 6 karakter";
+      console.log("❌ Validation failed:", message);
+      
+      if (Platform.OS === 'web') {
+        alert(message);
+      } else {
+        Alert.alert("Error", message);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await register({
+        email,
+        password,
+        name: nama,
+        nim,
+        kelas,
+        gender,
+      });
+
+      console.log("📋 Register result:", result);
+
+      if (result.success) {
+        console.log("✅ Registration successful!");
+        
+        if (Platform.OS === 'web') {
+          alert("Registrasi berhasil! Silakan login.");
+          router.replace("/(auth)/login" as any);
+        } else {
+          Alert.alert(
+            "Sukses",
+            result.message,
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login" as any),
+              },
+            ]
+          );
+        }
+      } else {
+        console.log("❌ Registration failed:", result.message);
+        
+        if (Platform.OS === 'web') {
+          alert("Registrasi Gagal: " + result.message);
+        } else {
+          Alert.alert("Registrasi Gagal", result.message);
+        }
+      }
+    } catch (error: any) {
+      console.error("💥 Register error:", error);
+      
+      if (Platform.OS === 'web') {
+        alert("Error: " + (error.message || "Terjadi kesalahan"));
+      } else {
+        Alert.alert("Error", error.message || "Terjadi kesalahan");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -196,8 +289,16 @@ export default function RegisterScreen() {
                 )}
               </View>
 
-              <Pressable style={styles.primaryBtn} onPress={onRegister}>
-                <Text style={styles.primaryText}>Daftar</Text>
+              <Pressable 
+                style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]} 
+                onPress={onRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryText}>Daftar</Text>
+                )}
               </Pressable>
 
               <View style={styles.loginRow}>
@@ -305,6 +406,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#0EA5A6",
     paddingVertical: 11,
     alignItems: "center",
+  },
+  primaryBtnDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   primaryText: {
     fontFamily: "Poppins_700Bold",
