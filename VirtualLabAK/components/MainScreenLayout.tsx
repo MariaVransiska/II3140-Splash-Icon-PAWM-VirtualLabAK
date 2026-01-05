@@ -1,11 +1,12 @@
 import React, { ReactNode } from "react";
 import {
+  Image,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,19 +22,20 @@ export function MainScreenLayout({ title, children, showBack }: Props) {
 
   return (
     <LinearGradient
-      colors={["#00F2FF", "#00A89B"]}
+      colors={["#0EA5A6", "#FFFFFF", "#0EA5A6"]}
+      locations={[0, 0.5, 1]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <View style={styles.headerRow}>
           {showBack ? (
             <Pressable
               style={styles.iconBox}
               onPress={() => router.canGoBack() && router.back()}
             >
-              <Ionicons name="chevron-back" size={22} color="#00A89B" />
+              <Ionicons name="chevron-back" size={22} color="#0EA5A6" />
             </Pressable>
           ) : (
             <View style={styles.iconBox} />
@@ -42,7 +44,11 @@ export function MainScreenLayout({ title, children, showBack }: Props) {
           <Text style={styles.title}>{title}</Text>
 
           <View style={styles.iconBox}>
-            <Ionicons name="heart" size={18} color="#111827" />
+            <Image
+              source={require("@/assets/images/Icon Final VirtualLabAK.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
         </View>
 
@@ -68,6 +74,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
+  },
+  logo: {
+    width: 22,
+    height: 22,
   },
   title: {
     fontSize: 18,

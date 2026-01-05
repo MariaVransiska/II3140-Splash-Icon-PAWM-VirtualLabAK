@@ -9,7 +9,8 @@ type Props = {
 export function SimpleGradientScreen({ children }: Props) {
   return (
     <LinearGradient
-      colors={["#E7FFFE", "#00A89B"]}
+      colors={["#0EA5A6", "#FFFFFF", "#0EA5A6"]} 
+      locations={[0, 0.5, 1]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={styles.gradient}
