@@ -22,7 +22,7 @@ export function MainScreenLayout({ title, children, showBack }: Props) {
 
   return (
     <LinearGradient
-      colors={["#0EA5A6", "#FFFFFF", "#0EA5A6"]}
+      colors={["#0B8A8B", "#78D5D6", "#0B8A8B"]}
       locations={[0, 0.5, 1]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
@@ -43,7 +43,7 @@ export function MainScreenLayout({ title, children, showBack }: Props) {
 
           <Text style={styles.title}>{title}</Text>
 
-          <View style={styles.iconBox}>
+          <View>
             <Image
               source={require("@/assets/images/Icon Final VirtualLabAK.png")}
               style={styles.logo}
@@ -70,14 +70,14 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 36,
     height: 36,
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
   },
   logo: {
-    width: 22,
-    height: 22,
+    width: 40,
+    height: 40,
   },
   title: {
     fontSize: 18,
@@ -87,7 +87,6 @@ const styles = StyleSheet.create({
   contentWrapper: {
     flex: 1,
     borderRadius: 24,
-    backgroundColor: "#ffffff",
     padding: 16,
   },
 });

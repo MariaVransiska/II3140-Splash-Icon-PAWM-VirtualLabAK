@@ -38,11 +38,11 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    console.log("🔐 Attempting login with:", email);
+    console.log(" Attempting login with:", email);
     
     try {
       const result = await login({ email, password });
-      console.log("📋 Login result:", result);
+      console.log(" Login result:", result);
 
       if (result.success && result.user) {
         // Simpan user session ke local storage
@@ -52,7 +52,7 @@ export default function LoginScreen() {
           name: result.user.name,
         });
 
-        console.log("✅ Login successful, navigating to home");
+        console.log(" Login successful, navigating to home");
         
         if (Platform.OS === 'web') {
           alert("Login berhasil!");
@@ -62,7 +62,7 @@ export default function LoginScreen() {
         
         router.replace("/(main)/(tabs)/home" as any);
       } else {
-        console.log("❌ Login failed:", result.message);
+        console.log(" Login failed:", result.message);
         
         if (Platform.OS === 'web') {
           alert("Login Gagal: " + result.message);
@@ -71,7 +71,7 @@ export default function LoginScreen() {
         }
       }
     } catch (error: any) {
-      console.error("💥 Login error:", error);
+      console.error(" Login error:", error);
       
       if (Platform.OS === 'web') {
         alert("Error: " + (error.message || "Terjadi kesalahan"));
@@ -91,17 +91,21 @@ export default function LoginScreen() {
       end={{ x: 0.5, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.safe}
+        edges={["top", "left", "right", "bottom"]}
+      >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.container}>
+            {/* HEADER ATAS */}
             <View style={styles.headerTop}>
               <View style={styles.iconCircle}>
                 <Image
                   source={require("@/assets/images/Icon Final VirtualLabAK.png")}
-                  style={{ width: 70, height: 70}}
+                  style={{ width: 70, height: 70 }}
                   resizeMode="contain"
                 />
               </View>
@@ -158,7 +162,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* CARD BAWAH: footer text */}
+            {/* FOOTER */}
             <View style={styles.footerCard}>
               <Text style={styles.footerText}>
                 Virtual Lab Agama Kristen 2025

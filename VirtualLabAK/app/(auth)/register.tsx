@@ -33,12 +33,12 @@ export default function RegisterScreen() {
   };
 
   const onRegister = async () => {
-    console.log("📝 Register attempt with:", { nama, email, nim, kelas, gender });
+    console.log(" Register attempt with:", { nama, email, nim, kelas, gender });
     
     // Validasi input
     if (!nama || !email || !password || !nim || !kelas || !gender) {
       const message = "Semua field wajib diisi";
-      console.log("❌ Validation failed:", message);
+      console.log(" Validation failed:", message);
       
       if (Platform.OS === 'web') {
         alert(message);
@@ -50,7 +50,7 @@ export default function RegisterScreen() {
 
     if (nim.length !== 8) {
       const message = "NIM harus 8 digit";
-      console.log("❌ Validation failed:", message);
+      console.log(" Validation failed:", message);
       
       if (Platform.OS === 'web') {
         alert(message);
@@ -62,7 +62,7 @@ export default function RegisterScreen() {
 
     if (password.length < 6) {
       const message = "Password minimal 6 karakter";
-      console.log("❌ Validation failed:", message);
+      console.log(" Validation failed:", message);
       
       if (Platform.OS === 'web') {
         alert(message);
@@ -83,10 +83,10 @@ export default function RegisterScreen() {
         gender,
       });
 
-      console.log("📋 Register result:", result);
+      console.log(" Register result:", result);
 
       if (result.success) {
-        console.log("✅ Registration successful!");
+        console.log(" Registration successful!");
         
         if (Platform.OS === 'web') {
           alert("Registrasi berhasil! Silakan login.");
@@ -104,7 +104,7 @@ export default function RegisterScreen() {
           );
         }
       } else {
-        console.log("❌ Registration failed:", result.message);
+        console.log(" Registration failed:", result.message);
         
         if (Platform.OS === 'web') {
           alert("Registrasi Gagal: " + result.message);
@@ -113,7 +113,7 @@ export default function RegisterScreen() {
         }
       }
     } catch (error: any) {
-      console.error("💥 Register error:", error);
+      console.error(" Register error:", error);
       
       if (Platform.OS === 'web') {
         alert("Error: " + (error.message || "Terjadi kesalahan"));
